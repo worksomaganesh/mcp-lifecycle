@@ -1,0 +1,7 @@
+# New project sessions start read-only. Codex subagents inherit the parent
+# session's sandbox; an agent role cannot grant itself broader access.
+sandbox_mode = "read-only"
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3

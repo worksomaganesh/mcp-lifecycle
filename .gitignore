@@ -1,0 +1,9 @@
+/target/
+/dist/
+/.tools/
+/.env
+/.env.*
+!/.env.example
+*.log
+*.dmp
+*.core

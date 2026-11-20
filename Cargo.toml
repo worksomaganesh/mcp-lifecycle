@@ -1,0 +1,13 @@
+[package]
+name = "mcp-lifecycle"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Local-first CLI foundation for MCP stdio lifecycle reliability testing"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "mcp-lifecycle"
+path = "src/main.rs"
