@@ -5,7 +5,7 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use toml::Table;
 
-const PROFILE_FIELDS: &[&str] = &[
+const PROFILE_FIELDS: &'static [&'static str] = &[
     "schema_version",
     "name",
     "executable",
@@ -16,7 +16,7 @@ const PROFILE_FIELDS: &[&str] = &[
     "limits",
 ];
 
-const LIMIT_FIELDS: &[&str] = &[
+const LIMIT_FIELDS: &'static [&'static str] = &[
     "execution_timeout_ms",
     "graceful_shutdown_timeout_ms",
     "stdout_capture_bytes",
@@ -111,7 +111,7 @@ pub(super) fn read(path: &Path) -> Result<UnvalidatedProfile, ProfileError> {
 fn check_table_fields(
     table: &Table,
     section: &'static str,
-    allowed: &[&str],
+    allowed: &'static [&'static str],
 ) -> Result<(), ProfileError> {
     if let Some(unknown) = table.keys().find(|key| !allowed.contains(&key.as_str())) {
         return Err(ProfileError::UnknownField {
@@ -120,8 +120,8 @@ fn check_table_fields(
         });
     }
 
-    for field in allowed {
-        if !table.contains_key(*field) {
+    for &field in allowed {
+        if !table.contains_key(field) {
             return Err(ProfileError::MissingField { field });
         }
     }

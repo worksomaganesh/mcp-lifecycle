@@ -173,6 +173,19 @@ fn rejects_missing_required_fields() {
         parse_profile(&profile).err(),
         Some(ProfileError::MissingField { field: "name" })
     );
+
+    let profile = valid_profile(directory.path())
+        .lines()
+        .filter(|line| !line.starts_with("max_lifecycle_cycles = "))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert_eq!(
+        parse_profile(&profile).err(),
+        Some(ProfileError::MissingField {
+            field: "max_lifecycle_cycles"
+        })
+    );
 }
 
 #[test]

@@ -13,7 +13,7 @@ pub(super) const MAX_GRACEFUL_SHUTDOWN_TIMEOUT_MS: i64 = 30 * 1_000;
 pub(super) const MIN_CAPTURE_BYTES: i64 = KIB as i64;
 pub(super) const MAX_STDOUT_CAPTURE_BYTES: i64 = (255 * MIB) as i64;
 pub(super) const MAX_STDERR_CAPTURE_BYTES: i64 = MIB as i64;
-pub(super) const MAX_TOTAL_CAPTURE_BYTES: i64 = (256 * MIB) as i64;
+pub(super) const MAX_TOTAL_CAPTURE_BYTES: u64 = 256 * MIB;
 pub(super) const MIN_PROTOCOL_FRAME_BYTES: i64 = KIB as i64;
 pub(super) const MAX_PROTOCOL_FRAME_BYTES: i64 = (8 * MIB) as i64;
 pub(super) const MIN_LIFECYCLE_CYCLES: i64 = 1;
@@ -328,7 +328,10 @@ fn validate_limits(raw: super::schema::RawLimits) -> Result<ProfileLimits, Profi
         MAX_LIFECYCLE_CYCLES,
     )? as u32;
 
-    if stdout_capture_bytes + stderr_capture_bytes > MAX_TOTAL_CAPTURE_BYTES {
+    if stdout_capture_bytes
+        .checked_add(stderr_capture_bytes)
+        .is_none_or(|total| total > MAX_TOTAL_CAPTURE_BYTES)
+    {
         return Err(ProfileError::InvalidField {
             field: "limits.stdout_capture_bytes + limits.stderr_capture_bytes",
             requirement: "must total no more than 268435456 bytes",
