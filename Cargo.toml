@@ -3,7 +3,11 @@ name = "mcp-lifecycle"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Local-first CLI foundation for MCP stdio lifecycle reliability testing"
+description = "Local-first CLI for validating MCP stdio lifecycle test profiles"
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+toml = "1.2.2"
 
 [lib]
 path = "src/lib.rs"

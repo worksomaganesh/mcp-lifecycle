@@ -4,7 +4,7 @@
 
 This workforce supports the local-first Rust CLI in `MCP Lifecycle & Leak Lab`. The primary Codex session remains responsible for scope, delegation, final integration, verification, and the user-facing report. Specialists are project-scoped roles; they do not imply that the application has implemented their areas of expertise.
 
-The application is still at the Phase 0 foundation: help and version output only. These roles do not implement a process supervisor, MCP client, lifecycle scenarios, profile parser, resource collector, or report writer unless a later task explicitly authorizes that work.
+The application now contains Phase 1 TOML profile parsing and validation source in addition to help and version output; compile and test verification remain outstanding. It does not implement a process supervisor, MCP client, lifecycle scenarios, resource collector, or report writer. Specialist roles describe review and engineering responsibilities; they do not imply that those application features exist.
 
 ## Roles
 

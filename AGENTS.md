@@ -4,7 +4,7 @@
 
 MCP Lifecycle & Leak Lab is a local-first Rust CLI for investigating the lifecycle reliability of stdio-launched MCP servers. V1 remains one Cargo package. Do not add a hosted API, database, telemetry service, or unrelated infrastructure.
 
-The current application is a Phase 0 foundation. It implements help and version output only. Profile parsing, process supervision, MCP client behavior, lifecycle scenarios, resource observation, and report generation are not implemented. Do not describe planned behavior as working.
+The current application contains source code for help, version, and Phase 1 TOML profile parsing and validation. It does not launch configured executables or implement process supervision, MCP client behavior, lifecycle scenarios, resource observation, or report generation. Do not describe planned behavior as working or verified until the checks pass.
 
 ## Authoritative project references
 
@@ -12,6 +12,7 @@ The current application is a Phase 0 foundation. It implements help and version 
 - `docs/architecture.md`: component boundaries, protocol and platform strategy, observation semantics.
 - `docs/threat-model.md`: execution risks and security limits.
 - `docs/decisions/0001-v1-scope.md`: accepted scope decisions and unresolved questions.
+- `docs/decisions/0002-profile-schema-validation.md`: Phase 1 profile schema, validation policy, and unresolved questions.
 - `docs/engineering/ai-workforce.md`: agent roles, delegation policy, and Codex sandbox limitations.
 
 If these documents disagree, surface the conflict and follow the user's latest explicit direction. Do not silently change an accepted protocol version, process guarantee, report contract, or security boundary.

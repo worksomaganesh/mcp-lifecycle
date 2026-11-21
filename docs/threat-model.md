@@ -1,36 +1,44 @@
 # Threat model
 
-## Scope
+## Scope and assets
 
-The planned application will launch a process selected by a local profile. That process may be buggy, compromised, or intentionally hostile. It runs with the invoking user's privileges. The tool is intended for local reliability testing, not for executing untrusted code safely.
+MCP Lifecycle & Leak Lab is intended to launch a process selected by a local profile in a later phase. That process may be buggy, compromised, or intentionally hostile, and it would run with the invoking user's operating-system privileges unless the user supplies external isolation. The tool is for local reliability testing, not for safely executing untrusted code.
 
-## Security limitations
+Relevant assets include the user's files and credentials, inherited environment variables, profile contents, captured process output, process-tree state, and generated reports. Profiles may expose executable paths, arguments, and allowlisted variable names. A future launcher may read the corresponding environment values.
 
-Profile validation checks configuration shape and policy. It does **not** sandbox arbitrary executables, restrict filesystem or network access, prevent a target from reading user data, or guarantee that a process cannot escape an observation mechanism. Use an operating-system sandbox or disposable virtual machine when testing a target that must not have access to the host.
+## Current behavior and limits
 
-Path checks also do not establish binary trust. An explicit executable path avoids PATH lookup, but the file may still be malicious or replaced between validation and launch. Validation should be repeated immediately before launch and the resolved path recorded, but this is not a complete defense against local file replacement.
+The Phase 1 source implements local TOML profile parsing and validation. The `validate` code path contains no child-process launch and does not resolve environment allowlist values. It caps input at 1 MiB, rejects unknown fields, applies finite semantic bounds, and formats structured errors without printing profile values. The executable must be an absolute path but is not checked for existence or trust; the working directory must exist and be a directory. These code paths have not completed compilation or test verification in this environment because Windows Application Control blocked dependency build scripts (OS error 4551); treat runtime behavior as unverified until the checks pass.
 
-## Planned execution policy
+Profile validation does **not** sandbox arbitrary executables. It does not restrict filesystem or network access, prevent a target from reading user data, establish binary trust, or guarantee that a process cannot escape a future observation mechanism. An explicit path only removes PATH-based executable lookup. A file could be malicious or replaced after validation. A working directory is not filesystem confinement. Use an operating-system sandbox or disposable virtual machine for targets that must not access the host.
 
-- Require an explicit absolute executable path. Do not search PATH.
-- Represent arguments as an array passed directly to the executable. Do not build or interpolate shell command strings.
-- Clear the inherited environment and pass only profile-allowlisted names and values. Never dump environment values to diagnostics or reports.
-- Require an explicit absolute existing working directory. Do not inherit the caller's current directory or expand shell, home-directory, or environment-variable syntax. The working directory is not filesystem confinement.
-- Parse and validate the versioned profile on every run before creating any child process. Reject unsupported schema versions, unknown fields, invalid paths, invalid bounds, and unsupported protocol versions before launch.
-- Limit execution to one concurrent child, at most 100 sequential cycles, a 30-minute overall run, 15-second startup timeout (hard ceiling 60 seconds), 30-second request timeout (hard ceiling 5 minutes), and 5-second graceful-shutdown wait (hard ceiling 30 seconds).
-- Limit each protocol frame to 8 MiB, retain at most a 1 MiB stderr tail in memory, and stop a run if total child output exceeds 256 MiB. Continue draining both pipes while within the byte budget so output cannot block the child.
-- Do not persist raw stdout protocol data or raw stderr by default. Reports omit raw argument and environment values. Any later opt-in diagnostic output must apply configured argument-index and environment-name redaction before persistence. Automatic secret detection is not reliable.
+Validation is also subject to filesystem time-of-check/time-of-use changes: the working directory or executable may be replaced after validation and before any future launch. Future run code must revalidate immediately before launch, use OS APIs that minimize path substitution where practical, and clearly describe the remaining limitations.
 
-These limits are initial policy values. They should be exercised against controlled fixtures before a run command is implemented; changing them requires updating the decision record and report schema as appropriate.
+## Future execution policy
 
-## Process-tree boundary
+Any run implementation must:
 
-The V1 target is a Windows Job Object established before target code can spawn descendants. The tool should disable breakaway and fail closed if job assignment is unavailable. It must not describe termination of the direct child as tree cleanup. Jobs cannot prove containment of processes deliberately created outside their association or through APIs that do not inherit job membership. Linux and macOS behavior is unimplemented and unverified.
+- Require a host-absolute explicit executable path. Do not search `PATH` or invoke a shell.
+- Pass arguments as an array directly to the executable. Do not concatenate or interpolate a shell command string.
+- Store only an environment-variable name allowlist in the profile. Clear the inherited environment and copy only explicitly allowed names at launch time. Never print values to diagnostics or reports.
+- Require an explicit absolute working directory. Do not silently inherit the CLI's current directory or expand shell, home, or environment-variable syntax. This directory is not a sandbox.
+- Reject unsupported schema and protocol versions, unknown fields, invalid paths, and out-of-range limits before child creation. Run code must accept `ValidatedProfile`, not raw profile input.
+- Enforce explicit finite execution and graceful-shutdown timeouts, bounded stdout/stderr capture, a bounded protocol frame size, and maximum lifecycle cycles. Future process code must continue draining both pipes without blocking even after retaining output is capped.
+- Avoid retaining raw stdout protocol messages or raw stderr by default. Any future diagnostic persistence must define redaction and retention first. Automatic secret detection is not reliable.
+- Redact path, argument, environment, and profile values from error messages unless an explicitly reviewed diagnostic policy says otherwise. Current validation errors expose field names and safe constraints, not supplied values.
+
+The current profile schema uses these hard bounds: profile file 1 MiB; execution timeout 1,000–1,800,000 ms; graceful shutdown 100–30,000 ms; stdout capture 1,024–267,386,880 bytes; stderr capture 1,024–1,048,576 bytes; combined capture at most 268,435,456 bytes; protocol frame 1,024–8,388,608 bytes; lifecycle cycles 1–100. The capture limits are configuration policy only today; no process output is captured in this phase.
+
+## Process supervision boundary
+
+Windows x64 is the primary development and initial verification platform, but there is currently no process supervisor. The V1 design target for process-tree containment is a Windows Job Object established before target code is allowed to spawn descendants, with breakaway disabled, and fail-closed behavior if assignment cannot be established. Direct-child termination is not proof of process-tree cleanup. Job Objects also cannot prove containment for a process intentionally created outside the job association or through APIs that do not inherit it.
+
+Windows MSVC, Linux, and macOS runtime process-tree behavior are unverified. No cross-platform cleanup guarantee may be claimed until each platform has an implemented containment strategy and integration tests. Process enumeration alone is not a reliable universal tree-cleanup mechanism.
 
 ## Data handling
 
-Profiles and reports are local files. Profiles may contain executable paths, arguments, and environment values. Keep them under user-controlled filesystem permissions and do not commit secrets. The application should avoid echoing profile values in errors, help text, or reports. Reports may still reveal paths, timing, process identifiers, and server behavior; users should review them before sharing.
+Profiles and future reports are local files. Keep them under user-controlled filesystem permissions; do not commit secrets. The environment allowlist contains names only, but later copied values may be sensitive. Reports may reveal paths, process identifiers, timings, exit states, or server behavior even when secrets are removed. Review reports before sharing.
 
-## Current behavior
+## Verification boundary
 
-The code implements help and version output only. Its three library unit tests pass. Full `cargo test` could not complete because Windows Application Control blocked `rustdoc` at the doctest step. The CLI executable's help/version behavior has not been verified end to end. It does not parse profiles, access configured paths, launch processes, capture MCP messages, or produce reports. The controls in this document describe the intended future run path, not implemented protections.
+This document describes the Phase 1 behavior and requirements for future launch code. It does not assert that future process safety controls, output handling, MCP protocol behavior, resource observations, or report redaction are implemented. Test and toolchain results are reported separately for each implementation change.
